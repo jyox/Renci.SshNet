@@ -12,23 +12,27 @@ namespace Renci.SshNet
     /// </summary>
     public partial class ForwardedPortLocal
     {
-        private Socket _listener;
-        private int _pendingRequests;
+	    private int _pendingRequests;
 
-        partial void ExecuteThread(Action action);
+		/// <summary>
+		/// 
+		/// </summary>
+	    public Socket Listener { get; set; }
+
+	    partial void ExecuteThread(Action action);
 
         partial void InternalStart()
         {
             var addr = BoundHost.GetIPAddress();
             var ep = new IPEndPoint(addr, (int) BoundPort);
 
-            _listener = new Socket(ep.AddressFamily, SocketType.Stream, ProtocolType.Tcp) {Blocking = true};
-            _listener.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.NoDelay, true);
-            _listener.Bind(ep);
-            _listener.Listen(1);
+            Listener = new Socket(ep.AddressFamily, SocketType.Stream, ProtocolType.Tcp) {Blocking = true};
+            Listener.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.NoDelay, true);
+            Listener.Bind(ep);
+            Listener.Listen(1);
 
             // update bound port (in case original was passed as zero)
-            BoundPort = (uint)((IPEndPoint)_listener.LocalEndPoint).Port;
+            BoundPort = (uint)((IPEndPoint)Listener.LocalEndPoint).Port;
 
             Session.ErrorOccured += Session_ErrorOccured;
             Session.Disconnected += Session_Disconnected;
@@ -42,7 +46,7 @@ namespace Renci.SshNet
                         while (true)
                         {
                             // accept new inbound connection
-                            var asyncResult = _listener.BeginAccept(AcceptCallback, _listener);
+                            var asyncResult = Listener.BeginAccept(AcceptCallback, Listener);
                             // wait for the connection to be established
                             asyncResult.AsyncWaitHandle.WaitOne();
                         }
@@ -160,12 +164,12 @@ namespace Renci.SshNet
             Session.ErrorOccured -= Session_ErrorOccured;
 
             // close listener socket
-            _listener.Close();
+            Listener.Close();
             // wait for listener loop to finish
             _listenerTaskCompleted.WaitOne();
         }
 
-        private void Session_ErrorOccured(object sender, Common.ExceptionEventArgs e)
+        private void Session_ErrorOccured(object sender, ExceptionEventArgs e)
         {
             StopListener();
         }
